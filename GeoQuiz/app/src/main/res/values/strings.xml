@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">GeoQuiz</string>
+    <string name="question_rus">Москва столица России ?</string>
+    <string name="question_gr">Гамбург столица Германии?</string>
+    <string name="question_fr">Париж столица Франции ?</string>
+    <string name="question_baikal">Байкал самое большое глубое озеро ?</string>
+    <string name="next"> Следующий </string>
+    <string name="back">Предыдущий  </string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+    <string name="correct_toast">Правильно</string>
+    <string name="incorrect_toast">Неправильно</string>
+</resources>
