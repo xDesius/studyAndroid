@@ -1,10 +1,7 @@
 package com.example.geoquiz
 
 import android.annotation.SuppressLint
-import android.media.Image
 import android.os.Bundle
-import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
@@ -13,7 +10,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.snackbar.Snackbar
+import androidx.lifecycle.ViewModelProvider
+
+private const val KEY_INDEX = "index"
+private const val KEY_CORRECT_ANSWERS = "correctAnswers"
+private const val KEY_ALL_ANSWERS = "allAnswers"
+private const val KEY_ANSWERED_ARRAY = "arrayAnswered"
 
 class MainActivity : AppCompatActivity() {
 
@@ -23,14 +25,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNext: ImageButton
     private lateinit var btnBack: ImageButton
 
-    private val questionBank
-        get() = listOf(
-            Question(R.string.question_rus, true),
-            Question(R.string.question_fr, true),
-            Question(R.string.question_gr, false),
-            Question(R.string.question_baikal,true)
-        )
-    private var currentIndex = 0
+
+
+    private val quizViewModel: QuizViewModel by lazy {
+        ViewModelProvider(this).get(QuizViewModel::class.java)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_INDEX,  quizViewModel.currentIndex)
+        outState.putInt(KEY_CORRECT_ANSWERS, quizViewModel.correctAnswers)
+        outState.putInt(KEY_ALL_ANSWERS, quizViewModel.allAnswers)
+        outState.putIntegerArrayList(KEY_ANSWERED_ARRAY, quizViewModel.listOfAnswered)
+    }
 
     @SuppressLint("ShowToast")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +50,12 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        val defaultValue = emptyArray<Int>().toMutableList()
+
+        quizViewModel.currentIndex = savedInstanceState?.getInt(KEY_INDEX, 0)  ?: 0
+        quizViewModel.allAnswers = savedInstanceState?.getInt(KEY_ALL_ANSWERS, 0) ?: 0
+        quizViewModel.correctAnswers = savedInstanceState?.getInt(KEY_CORRECT_ANSWERS, 0) ?: 0
+        quizViewModel.listOfAnswered = savedInstanceState?.getIntegerArrayList(KEY_ANSWERED_ARRAY) ?: ArrayList()
 
         btnTrue = findViewById(R.id.btnTrue)
         btnFalse = findViewById(R.id.btnFalse)
@@ -50,17 +63,12 @@ class MainActivity : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         tvQuestion = findViewById(R.id.tvQuestion)
 
-
         btnNext.setOnClickListener {
-            currentIndex = (currentIndex + 1) % questionBank.size
+            quizViewModel.moveToNext()
             updateQuestion()
         }
         btnBack.setOnClickListener {
-            if( (currentIndex - 1 ) < 0){
-                currentIndex = questionBank.size - 1
-            } else{
-                currentIndex--;
-            }
+            quizViewModel.moveToBack()
             updateQuestion()
         }
 
@@ -74,24 +82,63 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateQuestion(){
-        val questionTextResId = questionBank[currentIndex].textResId
+        val questionTextResId = quizViewModel.currentQuestionText
         tvQuestion.setText(questionTextResId)
     }
-    private fun checkAnswer(userAnswer: Boolean){
-        val correctAnswer = questionBank[currentIndex].answer
-
+    @SuppressLint("ShowToast")
+    private fun checkAnswer(userAnswer: Boolean) {
+        val correctAnswer = quizViewModel.currentQuestionAnswer
         val messageResId: Int
         if( userAnswer == correctAnswer){
+            if(quizViewModel.currentIndex !in quizViewModel.listOfAnswered){
+                quizViewModel.listOfAnswered.add(quizViewModel.currentIndex)
+                quizViewModel.correctAnswers++
+                quizViewModel.allAnswers++
+            }
             messageResId = R.string.correct_toast
-            currentIndex = (currentIndex + 1) % questionBank.size
+            quizViewModel.currentIndex = (quizViewModel.currentIndex + 1) % quizViewModel.getQuiestionBankSize()
             updateQuestion()
         } else{
+            if (quizViewModel.currentIndex !in quizViewModel.listOfAnswered) {
+                quizViewModel.listOfAnswered.add(quizViewModel.currentIndex)
+                quizViewModel.allAnswers++
+            }
             messageResId = R.string.incorrect_toast
+                quizViewModel.currentIndex = (quizViewModel.currentIndex + 1) % quizViewModel.getQuiestionBankSize()
+            updateQuestion()
         }
 
-        Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+        if (quizViewModel.allAnswers == quizViewModel.getQuiestionBankSize()){
+            resumeResults()
+        } else{
+            val toastAnswer = Toast.makeText(this, messageResId, Toast.LENGTH_SHORT)
+            toastAnswer.addCallback(object: Toast.Callback(){
+                override fun onToastShown() {
+                    super.onToastShown()
+                    btnTrue.isClickable=false
+                    btnFalse.isClickable=false
+                }
 
-
+                override fun onToastHidden() {
+                    super.onToastHidden()
+                    btnFalse.isClickable=true
+                    btnTrue.isClickable=true
+                }
+            })
+            toastAnswer.show()
+        }
 
     }
+
+    private fun resumeResults(){
+        val result = if(quizViewModel.correctAnswers != 0){
+            (quizViewModel.correctAnswers * 100) / quizViewModel.allAnswers
+        } else{ 0}
+        val toastResult = Toast.makeText(this,"Ваш результат: $result %", Toast.LENGTH_SHORT)
+        quizViewModel.correctAnswers = 0
+        quizViewModel.allAnswers = 0
+        toastResult.show()
+        quizViewModel.listOfAnswered = ArrayList<Int>()
+    }
+
 }
