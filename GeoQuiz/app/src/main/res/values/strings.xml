@@ -8,6 +8,13 @@
     <string name="back">Предыдущий  </string>
     <string name="yes">Да</string>
     <string name="no">Нет</string>
+    <string name="true_button">Правда</string>
+    <string name="false_button">Ложь</string>
     <string name="correct_toast">Правильно</string>
     <string name="incorrect_toast">Неправильно</string>
+    <string name="warning_text">Ты уверен ?</string>
+    <string name="show_answer_button">Ответ</string>
+    <string name="cheat_button">Считерить</string>
+    <string name="judgment_toast">Жульничать плохо</string>
+    <string name="title_activity_cheat">CheatActivity</string>
 </resources>

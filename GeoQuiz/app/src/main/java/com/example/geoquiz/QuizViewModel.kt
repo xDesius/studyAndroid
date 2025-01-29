@@ -11,10 +11,10 @@ class QuizViewModel : ViewModel() {
             Question(R.string.question_baikal,true)
         )
     var currentIndex = 0
-    var listOfAnswered: ArrayList<Int> = ArrayList<Int>()
+    var listOfAnswered: ArrayList<Int> = ArrayList()
     var correctAnswers = 0
     var allAnswers = 0
-
+    var isCheater = false
     val currentQuestionAnswer: Boolean
         get() = questionBank[currentIndex].answer
     val currentQuestionText: Int
@@ -26,7 +26,7 @@ class QuizViewModel : ViewModel() {
         if( (currentIndex - 1 ) < 0){
             currentIndex = questionBank.size - 1
         } else{
-            currentIndex--;
+            currentIndex--
         }
     }
     fun getQuiestionBankSize() : Int{

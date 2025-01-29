@@ -1,12 +1,15 @@
 package com.example.geoquiz
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -16,7 +19,10 @@ private const val KEY_INDEX = "index"
 private const val KEY_CORRECT_ANSWERS = "correctAnswers"
 private const val KEY_ALL_ANSWERS = "allAnswers"
 private const val KEY_ANSWERED_ARRAY = "arrayAnswered"
+private const val REQUEST_CODE_CHEAT = 0
+private const val EXTRA_ANSWER_IS_SHOWN = "com.example.geoquiz.answer_is_shown"
 
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
 
     private lateinit var btnTrue: Button
@@ -24,11 +30,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvQuestion: TextView
     private lateinit var btnNext: ImageButton
     private lateinit var btnBack: ImageButton
-
+    private lateinit var btnCheat: Button
 
 
     private val quizViewModel: QuizViewModel by lazy {
-        ViewModelProvider(this).get(QuizViewModel::class.java)
+        ViewModelProvider(this)[QuizViewModel::class.java]
+    }
+
+    private val cheatActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
+        if (result.resultCode == Activity.RESULT_OK){
+            val data: Intent? = result.data
+            val resultData = data?.getStringExtra(EXTRA_ANSWER_IS_SHOWN)
+            quizViewModel.isCheater = true
+            checkAnswer(!(quizViewModel.currentQuestionAnswer))
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -50,8 +65,6 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        val defaultValue = emptyArray<Int>().toMutableList()
-
         quizViewModel.currentIndex = savedInstanceState?.getInt(KEY_INDEX, 0)  ?: 0
         quizViewModel.allAnswers = savedInstanceState?.getInt(KEY_ALL_ANSWERS, 0) ?: 0
         quizViewModel.correctAnswers = savedInstanceState?.getInt(KEY_CORRECT_ANSWERS, 0) ?: 0
@@ -62,6 +75,13 @@ class MainActivity : AppCompatActivity() {
         btnNext = findViewById(R.id.btnNext)
         btnBack = findViewById(R.id.btnBack)
         tvQuestion = findViewById(R.id.tvQuestion)
+        btnCheat = findViewById(R.id.cheat_button)
+
+        btnCheat.setOnClickListener {
+            val answerIsTrue = quizViewModel.currentQuestionAnswer
+            val intent = CheatActivity.newIntent(this@MainActivity, answerIsTrue)
+            cheatActivityResultLauncher.launch(intent)
+        }
 
         btnNext.setOnClickListener {
             quizViewModel.moveToNext()
@@ -88,14 +108,18 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("ShowToast")
     private fun checkAnswer(userAnswer: Boolean) {
         val correctAnswer = quizViewModel.currentQuestionAnswer
-        val messageResId: Int
+        val messageResId = when{
+            quizViewModel.isCheater -> R.string.judgment_toast
+            userAnswer == correctAnswer -> R.string.correct_toast
+            else -> R.string.incorrect_toast
+        }
+        quizViewModel.isCheater = false
         if( userAnswer == correctAnswer){
             if(quizViewModel.currentIndex !in quizViewModel.listOfAnswered){
                 quizViewModel.listOfAnswered.add(quizViewModel.currentIndex)
                 quizViewModel.correctAnswers++
                 quizViewModel.allAnswers++
             }
-            messageResId = R.string.correct_toast
             quizViewModel.currentIndex = (quizViewModel.currentIndex + 1) % quizViewModel.getQuiestionBankSize()
             updateQuestion()
         } else{
@@ -103,8 +127,7 @@ class MainActivity : AppCompatActivity() {
                 quizViewModel.listOfAnswered.add(quizViewModel.currentIndex)
                 quizViewModel.allAnswers++
             }
-            messageResId = R.string.incorrect_toast
-                quizViewModel.currentIndex = (quizViewModel.currentIndex + 1) % quizViewModel.getQuiestionBankSize()
+            quizViewModel.currentIndex = (quizViewModel.currentIndex + 1) % quizViewModel.getQuiestionBankSize()
             updateQuestion()
         }
 
@@ -138,7 +161,7 @@ class MainActivity : AppCompatActivity() {
         quizViewModel.correctAnswers = 0
         quizViewModel.allAnswers = 0
         toastResult.show()
-        quizViewModel.listOfAnswered = ArrayList<Int>()
+        quizViewModel.listOfAnswered = ArrayList()
     }
 
 }
